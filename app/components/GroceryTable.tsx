@@ -271,10 +271,11 @@ function TableHeader() {
 
 const NEW_ROW_ID = "__new__";
 
-export function GroceryTable({ monthKey }: { monthKey: string | null }) {
+export function GroceryTable({ monthKey }: { monthKey: string }) {
   const {
     items,
     categories,
+    loading,
     saving,
     addItem,
     removeItem,
@@ -290,10 +291,7 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
   const [filterPaidBy, setFilterPaidBy] = useState<Person | "">("");
 
   const monthItems = useMemo(() => {
-    const filtered = monthKey
-      ? items.filter((item) => getMonthKey(item.purchaseDate) === monthKey)
-      : [];
-    const sorted = [...filtered].sort((a, b) =>
+    const sorted = [...items].sort((a, b) =>
       a.purchaseDate.localeCompare(b.purchaseDate)
     );
     if (isNewRow && draft && monthKey === getMonthKey(draft.purchaseDate)) {
@@ -404,12 +402,10 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
     });
   }
 
-  if (!monthKey) {
+  if (loading) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className={EMPTY_STATE}>
-          Select a month above to view and edit entries.
-        </p>
+        <p className={EMPTY_STATE}>Loading entries…</p>
       </div>
     );
   }

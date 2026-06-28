@@ -4,11 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { getCategoryColor } from "../lib/categories";
 import { formatCurrency } from "../lib/calculations";
 import { formatMonthLabel } from "../lib/grouping";
+import { formatPurchaseDateDisplay } from "../lib/purchase-date";
 import type {
   MonthSummaryDetail,
   PersonCategorySpending,
 } from "../lib/summary";
-import type { PersonSummary, Settlement } from "../lib/types";
+import type {
+  PairwiseItemContribution,
+  PairwiseRelationship,
+  PersonSummary,
+  Settlement,
+} from "../lib/types";
 import {
   CARD,
   EMPTY_STATE,
@@ -26,17 +32,20 @@ function WhoPaysWhomSection({ settlements }: { settlements: Settlement[] }) {
     <section className={`${CARD} overflow-hidden`}>
       <div className={SECTION_HEADER}>
         <h3 className="text-sm font-semibold text-foreground">Who pays whom</h3>
+        <p className="mt-0.5 text-xs text-muted">
+          Net settlement for each pair
+        </p>
       </div>
       <div className="p-4">
         {settlements.length === 0 ? (
           <p className="text-center text-sm text-muted">
-            Everyone is settled up.
+            Everyone is settled up across all pairs.
           </p>
         ) : (
           <ul className="space-y-2">
-            {settlements.map((s, i) => (
+            {settlements.map((s) => (
               <li
-                key={i}
+                key={`${s.from}-${s.to}`}
                 className="flex flex-wrap items-center gap-2 rounded-xl border border-border-muted bg-primary-muted/60 px-3 py-2.5 text-sm"
               >
                 <span className="font-semibold text-danger">{s.from}</span>
@@ -49,6 +58,151 @@ function WhoPaysWhomSection({ settlements }: { settlements: Settlement[] }) {
             ))}
           </ul>
         )}
+      </div>
+    </section>
+  );
+}
+
+function PairwiseItemList({
+  from,
+  to,
+  items,
+}: {
+  from: string;
+  to: string;
+  items: PairwiseItemContribution[];
+}) {
+  if (items.length === 0) {
+    return (
+      <p className="text-xs text-muted">
+        {from} owes {to} nothing from shared items.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-left text-muted">
+            <th className="pb-1 pr-2 font-medium">Date</th>
+            <th className="pb-1 pr-2 font-medium">Item</th>
+            <th className="pb-1 pr-2 text-right font-medium">Price</th>
+            <th className="pb-1 text-right font-medium">{from}&apos;s share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((entry, index) => (
+            <tr
+              key={`${entry.purchaseDate}-${entry.item}-${index}`}
+              className={index % 2 === 0 ? "bg-surface/60" : undefined}
+            >
+              <td className="py-1 pr-2 whitespace-nowrap">
+                {formatPurchaseDateDisplay(entry.purchaseDate)}
+              </td>
+              <td className="py-1 pr-2">{entry.item}</td>
+              <td className="py-1 pr-2 text-right whitespace-nowrap">
+                {formatCurrency(entry.price)}
+              </td>
+              <td className="py-1 text-right whitespace-nowrap font-medium text-primary">
+                {formatCurrency(entry.share)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PairwiseBreakdownSection({
+  pairwise,
+}: {
+  pairwise: PairwiseRelationship[];
+}) {
+  return (
+    <section className={`${CARD} overflow-hidden`}>
+      <div className={SECTION_HEADER}>
+        <h3 className="text-sm font-semibold text-foreground">
+          Pairwise breakdown
+        </h3>
+        <p className="mt-0.5 text-xs text-muted">
+          Gross debts both ways and net who pays whom for every pair
+        </p>
+      </div>
+      <div className="divide-y divide-border-muted">
+        {pairwise.map((pair) => (
+          <div
+            key={`${pair.personA}-${pair.personB}`}
+            className="space-y-3 p-4"
+          >
+            <h4 className="text-sm font-semibold text-foreground">
+              {pair.personA} ↔ {pair.personB}
+            </h4>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border-muted bg-surface/80 p-3">
+                <p className="mb-2 text-sm">
+                  <span className="font-semibold text-danger">
+                    {pair.personA}
+                  </span>
+                  <span className="text-muted"> owes </span>
+                  <span className="font-semibold text-success">
+                    {pair.personB}
+                  </span>
+                  <span className="ml-1 font-bold text-primary">
+                    {formatCurrency(pair.aOwesB)}
+                  </span>
+                </p>
+                <PairwiseItemList
+                  from={pair.personA}
+                  to={pair.personB}
+                  items={pair.aOwesBItems}
+                />
+              </div>
+
+              <div className="rounded-xl border border-border-muted bg-surface/80 p-3">
+                <p className="mb-2 text-sm">
+                  <span className="font-semibold text-danger">
+                    {pair.personB}
+                  </span>
+                  <span className="text-muted"> owes </span>
+                  <span className="font-semibold text-success">
+                    {pair.personA}
+                  </span>
+                  <span className="ml-1 font-bold text-primary">
+                    {formatCurrency(pair.bOwesA)}
+                  </span>
+                </p>
+                <PairwiseItemList
+                  from={pair.personB}
+                  to={pair.personA}
+                  items={pair.bOwesAItems}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border-muted bg-primary-muted/40 px-3 py-2.5 text-sm">
+              <span className="font-medium text-foreground">Net: </span>
+              {pair.netSettlement ? (
+                <>
+                  <span className="font-semibold text-danger">
+                    {pair.netSettlement.from}
+                  </span>
+                  <span className="text-muted"> → </span>
+                  <span className="font-semibold text-success">
+                    {pair.netSettlement.to}
+                  </span>
+                  <span className="ml-1 font-bold text-primary">
+                    {formatCurrency(pair.netSettlement.amount)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted">Settled between this pair</span>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -145,15 +299,13 @@ function PersonCategorySpendingSection({
 export function MonthSummaryDetail({
   monthKey,
   summary,
-  hasMonths,
   loading,
   error,
   onRetry,
   onDismissError,
 }: {
-  monthKey: string | null;
+  monthKey: string;
   summary: MonthSummaryDetail | null;
-  hasMonths: boolean;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -179,24 +331,12 @@ export function MonthSummaryDetail({
     );
   }
 
-  if (!hasMonths) {
+  if (!summary) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <p className={EMPTY_STATE}>
-          No data yet.{" "}
-          <a href="/" className="text-primary underline">
-            Add entries
-          </a>{" "}
-          first.
+          No items for {formatMonthLabel(monthKey)}.
         </p>
-      </div>
-    );
-  }
-
-  if (!monthKey || !summary) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className={EMPTY_STATE}>Select a month to view the summary.</p>
       </div>
     );
   }
@@ -222,12 +362,17 @@ export function MonthSummaryDetail({
       <section className={`${CARD} overflow-hidden`}>
         <div className={SECTION_HEADER}>
           <h3 className="text-sm font-semibold text-foreground">Balances</h3>
+          <p className="mt-0.5 text-xs text-muted">
+            Total paid vs total share for the month
+          </p>
         </div>
         <table className={TABLE}>
           <thead>
             <tr>
               <th className={`${TABLE_TH_STICKY} text-left`}>Person</th>
-              <th className={`${TABLE_TH_STICKY} text-right`}>Status</th>
+              <th className={`${TABLE_TH_STICKY} text-right`}>Paid</th>
+              <th className={`${TABLE_TH_STICKY} text-right`}>Share</th>
+              <th className={`${TABLE_TH_STICKY} text-right`}>Net</th>
             </tr>
           </thead>
           <tbody>
@@ -237,6 +382,12 @@ export function MonthSummaryDetail({
                 className={i % 2 === 0 ? "bg-surface" : ROW_STRIPE}
               >
                 <td className={`${TABLE_TD} font-medium`}>{s.person}</td>
+                <td className={`${TABLE_TD} text-right whitespace-nowrap`}>
+                  {formatCurrency(s.totalPaid)}
+                </td>
+                <td className={`${TABLE_TD} text-right whitespace-nowrap`}>
+                  {formatCurrency(s.totalShare)}
+                </td>
                 <td className={`${TABLE_TD} text-right`}>
                   <BalanceStatus s={s} />
                 </td>
@@ -245,6 +396,8 @@ export function MonthSummaryDetail({
           </tbody>
         </table>
       </section>
+
+      <PairwiseBreakdownSection pairwise={summary.pairwise} />
 
       {hasCategorySpending && (
         <PersonCategorySpendingSection

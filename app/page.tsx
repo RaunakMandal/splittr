@@ -6,19 +6,18 @@ import { ErrorAlert } from "./components/ErrorAlert";
 import { GroceryTable } from "./components/GroceryTable";
 import { MonthPicker } from "./components/MonthPicker";
 import { SettlementsPills } from "./components/SettlementsPills";
-import { computeMonthSummaries } from "./lib/grouping";
 import { useGrocery } from "./context/GroceryContext";
 import { useMonthSelection } from "./hooks/useMonthSelection";
+import { getSelectedMonthSummary } from "./lib/month-selection";
 
 export default function Home() {
-  const { items, error, clearError, reloadItems } = useGrocery();
-  const monthSummaries = useMemo(() => computeMonthSummaries(items), [items]);
-  const { selectedMonthKey, setSelectedMonthKey } =
-    useMonthSelection(monthSummaries);
+  const { items, monthSummaries, error, clearError, reloadItems } = useGrocery();
+  const { selectedMonthKey, setSelectedMonthKey, monthOptions } =
+    useMonthSelection();
 
   const selectedMonth = useMemo(
-    () => monthSummaries.find((m) => m.monthKey === selectedMonthKey) ?? null,
-    [monthSummaries, selectedMonthKey]
+    () => getSelectedMonthSummary(monthSummaries, selectedMonthKey, items),
+    [monthSummaries, selectedMonthKey, items]
   );
 
   return (
@@ -33,7 +32,7 @@ export default function Home() {
       )}
       <section className="shrink-0">
         <MonthPicker
-          months={monthSummaries}
+          months={monthOptions}
           selectedMonthKey={selectedMonthKey}
           onSelectMonth={setSelectedMonthKey}
         />

@@ -5,25 +5,27 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { collectCategories } from "../lib/categories";
 import {
   createItem as createItemApi,
   deleteItemApi,
+  fetchCategories,
   fetchItems,
+  fetchSummaries,
   importReceiptItems,
   updateItemApi,
 } from "../lib/api-client";
 import { getErrorMessage } from "../lib/errors";
 import { createEmptyItem } from "../lib/items";
+import type { MonthSummary } from "../lib/grouping";
 import type { GroceryItem, NewGroceryItem } from "../lib/types";
+import { useMonthSelectionState } from "./MonthSelectionContext";
 
 interface GroceryContextValue {
   items: GroceryItem[];
+  monthSummaries: MonthSummary[];
   categories: string[];
   loading: boolean;
   saving: boolean;
@@ -40,98 +42,114 @@ interface GroceryContextValue {
 const GroceryContext = createContext<GroceryContextValue | null>(null);
 
 export function GroceryProvider({ children }: { children: ReactNode }) {
+  const { selectedMonthKey } = useMonthSelectionState();
   const [items, setItems] = useState<GroceryItem[]>([]);
+  const [monthSummaries, setMonthSummaries] = useState<MonthSummary[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const itemsRef = useRef<GroceryItem[]>([]);
-
-  useEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
 
   const clearError = useCallback(() => setError(null), []);
+
+  const reloadMonthSummaries = useCallback(async () => {
+    const summaries = await fetchSummaries();
+    setMonthSummaries(summaries);
+  }, []);
 
   const reloadItems = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const fetched = await fetchItems();
+      const fetched = await fetchItems(selectedMonthKey);
       setItems(fetched);
-      itemsRef.current = fetched;
     } catch (err) {
       setItems([]);
-      itemsRef.current = [];
       setError(getErrorMessage(err, "Failed to load items"));
       throw err;
     } finally {
       setLoading(false);
+      setInitialLoad(false);
     }
+  }, [selectedMonthKey]);
+
+  useEffect(() => {
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
     reloadItems().catch(() => undefined);
   }, [reloadItems]);
 
-  const addItem = useCallback(async (item: NewGroceryItem) => {
-    setSaving(true);
-    setError(null);
-    try {
-      const saved = await createItemApi(item);
-      const next = [...itemsRef.current, saved];
-      setItems(next);
-      itemsRef.current = next;
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to save item"));
-      throw err;
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+  useEffect(() => {
+    reloadMonthSummaries().catch(() => undefined);
+  }, [reloadMonthSummaries]);
 
-  const addItems = useCallback(async (incoming: NewGroceryItem[]) => {
-    setSaving(true);
-    setError(null);
-    try {
-      const saved = await importReceiptItems(incoming);
-      const next = [...itemsRef.current, ...saved];
-      setItems(next);
-      itemsRef.current = next;
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to import items"));
-      throw err;
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+  const refreshAfterMutation = useCallback(async () => {
+    await reloadMonthSummaries().catch(() => undefined);
+  }, [reloadMonthSummaries]);
 
-  const removeItem = useCallback(async (id: string) => {
-    setSaving(true);
-    setError(null);
-    try {
-      await deleteItemApi(id);
-      const next = itemsRef.current.filter((item) => item.id !== id);
-      setItems(next);
-      itemsRef.current = next;
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to delete item"));
-      throw err;
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+  const addItem = useCallback(
+    async (item: NewGroceryItem) => {
+      setSaving(true);
+      setError(null);
+      try {
+        await createItemApi(item);
+        await Promise.all([reloadItems(), refreshAfterMutation()]);
+      } catch (err) {
+        setError(getErrorMessage(err, "Failed to save item"));
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [reloadItems, refreshAfterMutation]
+  );
+
+  const addItems = useCallback(
+    async (incoming: NewGroceryItem[]) => {
+      setSaving(true);
+      setError(null);
+      try {
+        await importReceiptItems(incoming);
+        await Promise.all([reloadItems(), refreshAfterMutation()]);
+      } catch (err) {
+        setError(getErrorMessage(err, "Failed to import items"));
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [reloadItems, refreshAfterMutation]
+  );
+
+  const removeItem = useCallback(
+    async (id: string) => {
+      setSaving(true);
+      setError(null);
+      try {
+        await deleteItemApi(id);
+        await Promise.all([reloadItems(), refreshAfterMutation()]);
+      } catch (err) {
+        setError(getErrorMessage(err, "Failed to delete item"));
+        throw err;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [reloadItems, refreshAfterMutation]
+  );
 
   const updateItem = useCallback(
     async (id: string, updates: Partial<GroceryItem>) => {
       setSaving(true);
       setError(null);
       try {
-        const saved = await updateItemApi(id, updates);
-        const next = itemsRef.current.map((item) =>
-          item.id === id ? saved : item
-        );
-        setItems(next);
-        itemsRef.current = next;
+        await updateItemApi(id, updates);
+        await Promise.all([reloadItems(), refreshAfterMutation()]);
       } catch (err) {
         setError(getErrorMessage(err, "Failed to update item"));
         throw err;
@@ -139,14 +157,12 @@ export function GroceryProvider({ children }: { children: ReactNode }) {
         setSaving(false);
       }
     },
-    []
+    [reloadItems, refreshAfterMutation]
   );
 
   const createDraftItem = useCallback(() => createEmptyItem(), []);
 
-  const categories = useMemo(() => collectCategories(items), [items]);
-
-  if (loading) {
+  if (initialLoad && loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-base text-primary">
         Loading…
@@ -158,6 +174,7 @@ export function GroceryProvider({ children }: { children: ReactNode }) {
     <GroceryContext.Provider
       value={{
         items,
+        monthSummaries,
         categories,
         loading,
         saving,

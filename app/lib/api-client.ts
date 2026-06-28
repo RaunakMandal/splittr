@@ -94,8 +94,8 @@ export async function login(password: string): Promise<string> {
   return data.token;
 }
 
-export async function fetchItems(month?: string): Promise<GroceryItem[]> {
-  const query = month ? `?month=${encodeURIComponent(month)}` : "";
+export async function fetchItems(month: string): Promise<GroceryItem[]> {
+  const query = `?month=${encodeURIComponent(month)}`;
   const data = await parseJson<{ items: GroceryItem[] }>(
     await apiFetch(`/api/grocery${query}`)
   );

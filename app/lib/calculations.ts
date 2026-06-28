@@ -1,4 +1,11 @@
-import type { GroceryItem, Person, PersonSummary, Settlement } from "./types";
+import type {
+  GroceryItem,
+  PairwiseItemContribution,
+  PairwiseRelationship,
+  Person,
+  PersonSummary,
+  Settlement,
+} from "./types";
 import { PEOPLE } from "./types";
 
 export function getSplitWays(
@@ -40,35 +47,76 @@ export function computePersonSummaries(items: GroceryItem[]): PersonSummary[] {
   });
 }
 
-export function computeSettlements(items: GroceryItem[]): Settlement[] {
-  const summaries = computePersonSummaries(items);
-  const creditors = summaries
-    .filter((s) => s.balance > 0.005)
-    .map((s) => ({ person: s.person, amount: s.balance }))
-    .sort((a, b) => b.amount - a.amount);
-  const debtors = summaries
-    .filter((s) => s.balance < -0.005)
-    .map((s) => ({ person: s.person, amount: -s.balance }))
-    .sort((a, b) => b.amount - a.amount);
+function computeGrossDebt(
+  from: Person,
+  to: Person,
+  items: GroceryItem[]
+): number {
+  return items.reduce((sum, item) => {
+    if (item.paidBy === to && item.participants[from]) {
+      return sum + getShare(item.price, item.participants, from);
+    }
+    return sum;
+  }, 0);
+}
 
-  const settlements: Settlement[] = [];
-  let i = 0;
-  let j = 0;
+function computeGrossDebtItems(
+  from: Person,
+  to: Person,
+  items: GroceryItem[]
+): PairwiseItemContribution[] {
+  return items
+    .filter((item) => item.paidBy === to && item.participants[from])
+    .map((item) => ({
+      item: item.item,
+      purchaseDate: item.purchaseDate,
+      price: item.price,
+      share: getShare(item.price, item.participants, from),
+      paidBy: item.paidBy,
+    }))
+    .sort((a, b) => a.purchaseDate.localeCompare(b.purchaseDate));
+}
 
-  while (i < debtors.length && j < creditors.length) {
-    const amount = Math.min(debtors[i].amount, creditors[j].amount);
-    if (amount > 0.005) {
-      settlements.push({
-        from: debtors[i].person,
-        to: creditors[j].person,
-        amount,
+export function computePairwiseRelationships(
+  items: GroceryItem[]
+): PairwiseRelationship[] {
+  const relationships: PairwiseRelationship[] = [];
+
+  for (let i = 0; i < PEOPLE.length; i++) {
+    for (let j = i + 1; j < PEOPLE.length; j++) {
+      const personA = PEOPLE[i];
+      const personB = PEOPLE[j];
+      const aOwesB = computeGrossDebt(personA, personB, items);
+      const bOwesA = computeGrossDebt(personB, personA, items);
+      const aOwesBItems = computeGrossDebtItems(personA, personB, items);
+      const bOwesAItems = computeGrossDebtItems(personB, personA, items);
+      const net = aOwesB - bOwesA;
+
+      let netSettlement: Settlement | null = null;
+      if (net > 0.005) {
+        netSettlement = { from: personA, to: personB, amount: net };
+      } else if (net < -0.005) {
+        netSettlement = { from: personB, to: personA, amount: -net };
+      }
+
+      relationships.push({
+        personA,
+        personB,
+        aOwesB,
+        bOwesA,
+        aOwesBItems,
+        bOwesAItems,
+        netSettlement,
       });
     }
-    debtors[i].amount -= amount;
-    creditors[j].amount -= amount;
-    if (debtors[i].amount < 0.005) i++;
-    if (creditors[j].amount < 0.005) j++;
   }
 
-  return settlements;
+  return relationships;
+}
+
+export function computeSettlements(items: GroceryItem[]): Settlement[] {
+  return computePairwiseRelationships(items)
+    .map((relationship) => relationship.netSettlement)
+    .filter((settlement): settlement is Settlement => settlement !== null)
+    .sort((a, b) => b.amount - a.amount);
 }

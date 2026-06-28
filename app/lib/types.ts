@@ -30,6 +30,24 @@ export interface Settlement {
   amount: number;
 }
 
+export interface PairwiseItemContribution {
+  item: string;
+  purchaseDate: string;
+  price: number;
+  share: number;
+  paidBy: Person;
+}
+
+export interface PairwiseRelationship {
+  personA: Person;
+  personB: Person;
+  aOwesB: number;
+  bOwesA: number;
+  aOwesBItems: PairwiseItemContribution[];
+  bOwesAItems: PairwiseItemContribution[];
+  netSettlement: Settlement | null;
+}
+
 export interface ParsedReceiptLine {
   item: string;
   price: number;

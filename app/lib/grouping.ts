@@ -1,5 +1,10 @@
 import type { GroceryItem, PersonSummary, Settlement } from "./types";
-import { computePersonSummaries, computeSettlements } from "./calculations";
+import type { PairwiseRelationship } from "./types";
+import {
+  computePairwiseRelationships,
+  computePersonSummaries,
+  computeSettlements,
+} from "./calculations";
 
 import { getMonthKeyFromPurchaseDate } from "./purchase-date";
 
@@ -51,6 +56,7 @@ export interface MonthSummary {
   totalSpent: number;
   summaries: PersonSummary[];
   settlements: Settlement[];
+  pairwise: PairwiseRelationship[];
 }
 
 export function computeMonthSummaries(items: GroceryItem[]): MonthSummary[] {
@@ -61,5 +67,6 @@ export function computeMonthSummaries(items: GroceryItem[]): MonthSummary[] {
     totalSpent: group.items.reduce((sum, item) => sum + item.price, 0),
     summaries: computePersonSummaries(group.items),
     settlements: computeSettlements(group.items),
+    pairwise: computePairwiseRelationships(group.items),
   }));
 }

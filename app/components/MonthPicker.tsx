@@ -10,11 +10,9 @@ export function MonthPicker({
   onSelectMonth,
 }: {
   months: MonthSummary[];
-  selectedMonthKey: string | null;
+  selectedMonthKey: string;
   onSelectMonth: (monthKey: string) => void;
 }) {
-  if (months.length === 0) return null;
-
   return (
     <div className="mb-1 flex items-center gap-2 px-1">
       <label
@@ -25,7 +23,7 @@ export function MonthPicker({
       </label>
       <select
         id="month-picker"
-        value={selectedMonthKey ?? ""}
+        value={selectedMonthKey}
         onChange={(e) => onSelectMonth(e.target.value)}
         className={`${INPUT} min-w-[10rem]`}
       >

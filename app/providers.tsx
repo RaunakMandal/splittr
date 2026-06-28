@@ -14,9 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {isLoginPage ? (
         children
       ) : (
-        <GroceryProvider>
-          <MonthSelectionProvider>{children}</MonthSelectionProvider>
-        </GroceryProvider>
+        <MonthSelectionProvider>
+          <GroceryProvider>{children}</GroceryProvider>
+        </MonthSelectionProvider>
       )}
     </AuthGate>
   );

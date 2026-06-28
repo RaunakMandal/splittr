@@ -11,14 +11,13 @@ import { MonthSummaryDetail } from "../components/MonthSummaryDetail";
 import { SettlementsPills } from "../components/SettlementsPills";
 import { useGrocery } from "../context/GroceryContext";
 import { useMonthSelection } from "../hooks/useMonthSelection";
-import { computeMonthSummaries } from "../lib/grouping";
+import { getSelectedMonthSummary } from "../lib/month-selection";
 import { computeMonthSummaryDetail } from "../lib/summary";
 
 export default function SummaryPage() {
-  const { items } = useGrocery();
-  const monthSummaries = useMemo(() => computeMonthSummaries(items), [items]);
-  const { selectedMonthKey, setSelectedMonthKey } =
-    useMonthSelection(monthSummaries);
+  const { items, monthSummaries, loading } = useGrocery();
+  const { selectedMonthKey, setSelectedMonthKey, monthOptions } =
+    useMonthSelection();
 
   const summary = useMemo(
     () =>
@@ -29,8 +28,8 @@ export default function SummaryPage() {
   );
 
   const selectedMonth = useMemo(
-    () => monthSummaries.find((m) => m.monthKey === selectedMonthKey) ?? null,
-    [monthSummaries, selectedMonthKey]
+    () => getSelectedMonthSummary(monthSummaries, selectedMonthKey, items),
+    [monthSummaries, selectedMonthKey, items]
   );
 
   return (
@@ -38,7 +37,7 @@ export default function SummaryPage() {
       <section className="shrink-0">
         <SectionLabel>Month</SectionLabel>
         <MonthPicker
-          months={monthSummaries}
+          months={monthOptions}
           selectedMonthKey={selectedMonthKey}
           onSelectMonth={setSelectedMonthKey}
         />
@@ -48,8 +47,7 @@ export default function SummaryPage() {
         <MonthSummaryDetail
           monthKey={selectedMonthKey}
           summary={summary}
-          hasMonths={monthSummaries.length > 0}
-          loading={false}
+          loading={loading}
           error={null}
           onRetry={() => undefined}
           onDismissError={() => undefined}
