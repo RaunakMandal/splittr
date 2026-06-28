@@ -15,7 +15,9 @@ export function toPurchaseDateIso(value: string): string {
   }
 
   const date = new Date(parsed);
-  const dateOnly = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+  const dateOnly = `${date.getUTCFullYear()}-${String(
+    date.getUTCMonth() + 1
+  ).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
   return `${dateOnly}T00:00:00.000Z`;
 }
 
@@ -38,7 +40,9 @@ export function toPurchaseDateInput(iso: string): string {
 }
 
 export function formatPurchaseDateDisplay(iso: string): string {
-  return toPurchaseDateInput(iso);
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  if (!year || !month || !day) return iso.slice(0, 10);
+  return `${day}-${month}-${year}`;
 }
 
 export function getMonthKeyFromPurchaseDate(iso: string): string {

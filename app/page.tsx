@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { AppShell, FullPageSection, SectionLabel } from "./components/AppShell";
+import { AppShell, FullPageSection } from "./components/AppShell";
 import { ErrorAlert } from "./components/ErrorAlert";
 import { GroceryTable } from "./components/GroceryTable";
-import { MonthOverviewTable } from "./components/MonthOverviewTable";
 import { MonthPicker } from "./components/MonthPicker";
+import { SettlementsPills } from "./components/SettlementsPills";
 import { computeMonthSummaries } from "./lib/grouping";
 import { useGrocery } from "./context/GroceryContext";
 import { useMonthSelection } from "./hooks/useMonthSelection";
@@ -22,7 +22,7 @@ export default function Home() {
   );
 
   return (
-    <AppShell>
+    <AppShell headerAside={<SettlementsPills month={selectedMonth} />}>
       {error && (
         <ErrorAlert
           message={error}
@@ -32,13 +32,11 @@ export default function Home() {
         />
       )}
       <section className="shrink-0">
-        <SectionLabel>Month</SectionLabel>
         <MonthPicker
           months={monthSummaries}
           selectedMonthKey={selectedMonthKey}
           onSelectMonth={setSelectedMonthKey}
         />
-        <MonthOverviewTable month={selectedMonth} />
       </section>
 
       <FullPageSection>

@@ -1,77 +1,50 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { getCategoryColor } from "../lib/categories";
 import { formatCurrency } from "../lib/calculations";
 import { formatMonthLabel } from "../lib/grouping";
-import type { MonthSummaryDetail } from "../lib/grocery-service";
+import type {
+  MonthSummaryDetail,
+  PersonCategorySpending,
+} from "../lib/summary";
 import type { PersonSummary, Settlement } from "../lib/types";
-import { CARD, TABLE, TABLE_TD, TABLE_TH_STICKY } from "../lib/ui";
+import {
+  CARD,
+  EMPTY_STATE,
+  INPUT,
+  ROW_STRIPE,
+  SECTION_HEADER,
+  TABLE,
+  TABLE_TD,
+  TABLE_TH_STICKY,
+} from "../lib/ui";
 import { ErrorAlert } from "./ErrorAlert";
 
-function describeBalance(s: PersonSummary): string {
-  if (s.balance > 0.005) {
-    return `${s.person} paid ${formatCurrency(
-      s.totalPaid
-    )} upfront but consumed ${formatCurrency(
-      s.totalShare
-    )} worth — others owe them ${formatCurrency(s.balance)}.`;
-  }
-  if (s.balance < -0.005) {
-    return `${s.person} consumed ${formatCurrency(
-      s.totalShare
-    )} worth but only paid ${formatCurrency(
-      s.totalPaid
-    )} — they owe ${formatCurrency(-s.balance)}.`;
-  }
-  return `${s.person} paid exactly what they consumed (${formatCurrency(
-    s.totalShare
-  )}).`;
-}
-
-function WhoPaysWhomSection({
-  monthKey,
-  settlements,
-}: {
-  monthKey: string;
-  settlements: Settlement[];
-}) {
+function WhoPaysWhomSection({ settlements }: { settlements: Settlement[] }) {
   return (
     <section className={`${CARD} overflow-hidden`}>
-      <div className="border-b border-green-100 bg-green-50/50 px-4 py-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-green-800">
-          Who pays whom
-        </h3>
-        <p className="mt-0.5 text-sm text-gray-500">
-          Minimum payments to settle all balances for{" "}
-          {formatMonthLabel(monthKey)}.
-        </p>
+      <div className={SECTION_HEADER}>
+        <h3 className="text-sm font-semibold text-foreground">Who pays whom</h3>
       </div>
       <div className="p-4">
         {settlements.length === 0 ? (
-          <p className="text-center text-base text-gray-500">
-            No payments needed — everyone is settled up for this month!
+          <p className="text-center text-sm text-muted">
+            Everyone is settled up.
           </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2">
             {settlements.map((s, i) => (
               <li
                 key={i}
-                className="rounded-2xl border border-green-100 bg-green-50 px-4 py-4"
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-border-muted bg-primary-muted/60 px-3 py-2.5 text-sm"
               >
-                <p className="flex flex-wrap items-center gap-2 text-base">
-                  <span className="font-semibold text-red-700">{s.from}</span>
-                  <span className="text-gray-500">should pay</span>
-                  <span className="text-xl font-bold text-[#2d6a4f]">
-                    {formatCurrency(s.amount)}
-                  </span>
-                  <span className="text-gray-500">to</span>
-                  <span className="font-semibold text-green-700">{s.to}</span>
-                </p>
-                <p className="mt-2 text-sm text-gray-600">
-                  {s.from} owes {s.to} {formatCurrency(s.amount)} to cover the
-                  difference between what {s.from} consumed and what they paid
-                  upfront.
-                </p>
+                <span className="font-semibold text-danger">{s.from}</span>
+                <span className="text-muted">→</span>
+                <span className="font-semibold text-success">{s.to}</span>
+                <span className="ml-auto text-base font-bold text-primary">
+                  {formatCurrency(s.amount)}
+                </span>
               </li>
             ))}
           </ul>
@@ -81,23 +54,91 @@ function WhoPaysWhomSection({
   );
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
+function BalanceStatus({ s }: { s: PersonSummary }) {
+  if (s.balance > 0.005) {
+    return (
+      <span className="font-semibold text-success">
+        gets back {formatCurrency(s.balance)}
+      </span>
+    );
+  }
+  if (s.balance < -0.005) {
+    return (
+      <span className="font-semibold text-danger">
+        owes {formatCurrency(-s.balance)}
+      </span>
+    );
+  }
+  return <span className="text-muted">settled</span>;
+}
+
+function PersonCategorySpendingSection({
+  monthKey,
+  breakdown,
 }: {
-  label: string;
-  value: string;
-  hint?: string;
+  monthKey: string;
+  breakdown: PersonCategorySpending[];
 }) {
+  const peopleWithSpending = useMemo(
+    () => breakdown.filter((p) => p.categories.length > 0),
+    [breakdown]
+  );
+  const [selectedPerson, setSelectedPerson] = useState(
+    peopleWithSpending[0]?.person ?? ""
+  );
+
+  useEffect(() => {
+    setSelectedPerson(peopleWithSpending[0]?.person ?? "");
+  }, [monthKey, peopleWithSpending]);
+
+  const selected =
+    peopleWithSpending.find((p) => p.person === selectedPerson) ??
+    peopleWithSpending[0];
+
+  if (!selected) return null;
+
   return (
-    <div className="rounded-2xl border border-green-100 bg-white px-4 py-3 shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
-        {label}
-      </p>
-      <p className="mt-1 text-xl font-bold text-[#2d6a4f]">{value}</p>
-      {hint && <p className="mt-0.5 text-sm text-gray-500">{hint}</p>}
-    </div>
+    <section className={`${CARD} overflow-hidden`}>
+      <div
+        className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${SECTION_HEADER}`}
+      >
+        <h3 className="text-sm font-semibold text-foreground">
+          Spending by category
+        </h3>
+        <label className="ml-auto flex items-center gap-2 text-sm">
+          <span className="font-medium text-foreground">Person</span>
+          <select
+            value={selected.person}
+            onChange={(e) => setSelectedPerson(e.target.value)}
+            className={`${INPUT} min-w-[10rem]`}
+          >
+            {peopleWithSpending.map((p) => (
+              <option key={p.person} value={p.person}>
+                {p.person}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <ul className="divide-y divide-border-muted px-4 py-1">
+        {selected.categories.map(({ category, amount }) => (
+          <li
+            key={category}
+            className="flex items-center justify-between gap-2 py-2.5 text-sm"
+          >
+            <span
+              className="rounded-full px-2.5 py-0.5 text-xs font-medium"
+              style={{ backgroundColor: getCategoryColor(category) }}
+            >
+              {category}
+            </span>
+            <span className="font-medium text-primary">
+              {formatCurrency(amount)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -121,7 +162,7 @@ export function MonthSummaryDetail({
   if (loading) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className="text-base text-green-800">Loading summary…</p>
+        <p className="text-base text-primary">Loading summary…</p>
       </div>
     );
   }
@@ -141,9 +182,9 @@ export function MonthSummaryDetail({
   if (!hasMonths) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className="rounded-2xl border border-dashed border-green-200 bg-white/60 px-4 py-8 text-center text-base text-gray-500">
+        <p className={EMPTY_STATE}>
           No data yet.{" "}
-          <a href="/" className="text-green-700 underline">
+          <a href="/" className="text-primary underline">
             Add entries
           </a>{" "}
           first.
@@ -155,75 +196,49 @@ export function MonthSummaryDetail({
   if (!monthKey || !summary) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className="rounded-2xl border border-dashed border-green-200 bg-white/60 px-4 py-8 text-center text-base text-gray-500">
-          Select a month to view the full breakdown.
-        </p>
+        <p className={EMPTY_STATE}>Select a month to view the summary.</p>
       </div>
     );
   }
 
-  const avgShare =
-    summary.summaries.reduce((sum, s) => sum + s.totalShare, 0) /
-    summary.summaries.length;
+  const hasCategorySpending = (summary.personCategoryBreakdown ?? []).some(
+    (p) => p.categories.length > 0
+  );
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto pb-2">
-      <div className="mb-3 px-1">
-        <h2 className="text-lg font-bold text-green-900">
+    <div className="min-h-0 flex-1 space-y-3 overflow-auto pb-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <h2 className="text-lg font-bold text-foreground">
           {formatMonthLabel(monthKey)}
         </h2>
-        <p className="mt-1 text-sm leading-relaxed text-gray-600">
-          A full breakdown of grocery spending for this month — how costs were
-          split and exactly who needs to settle up with whom.
+        <p className="text-sm text-muted">
+          {formatCurrency(summary.totalSpent)} · {summary.itemCount} item
+          {summary.itemCount !== 1 ? "s" : ""}
         </p>
       </div>
 
-      <section className={`${CARD} mb-4 overflow-hidden`}>
-        <div className="border-b border-green-100 bg-green-50/50 px-4 py-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-green-800">
-            Per-person breakdown
-          </h3>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Share = fair cost based on items they ate. Paid = what they spent
-            upfront. Balance = difference.
-          </p>
+      <WhoPaysWhomSection settlements={summary.settlements} />
+
+      <section className={`${CARD} overflow-hidden`}>
+        <div className={SECTION_HEADER}>
+          <h3 className="text-sm font-semibold text-foreground">Balances</h3>
         </div>
         <table className={TABLE}>
           <thead>
             <tr>
               <th className={`${TABLE_TH_STICKY} text-left`}>Person</th>
-              <th className={`${TABLE_TH_STICKY} text-right`}>Share</th>
-              <th className={`${TABLE_TH_STICKY} text-right`}>Paid</th>
-              <th className={`${TABLE_TH_STICKY} text-right`}>Balance</th>
+              <th className={`${TABLE_TH_STICKY} text-right`}>Status</th>
             </tr>
           </thead>
           <tbody>
             {summary.summaries.map((s, i) => (
               <tr
                 key={s.person}
-                className={i % 2 === 0 ? "bg-white" : "bg-green-50/40"}
+                className={i % 2 === 0 ? "bg-surface" : ROW_STRIPE}
               >
                 <td className={`${TABLE_TD} font-medium`}>{s.person}</td>
                 <td className={`${TABLE_TD} text-right`}>
-                  {formatCurrency(s.totalShare)}
-                </td>
-                <td className={`${TABLE_TD} text-right`}>
-                  {formatCurrency(s.totalPaid)}
-                </td>
-                <td
-                  className={`${TABLE_TD} text-right font-semibold ${
-                    s.balance > 0.005
-                      ? "text-green-700"
-                      : s.balance < -0.005
-                      ? "text-red-600"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {s.balance > 0.005
-                    ? `+${formatCurrency(s.balance)}`
-                    : s.balance < -0.005
-                    ? formatCurrency(s.balance)
-                    : "Settled"}
+                  <BalanceStatus s={s} />
                 </td>
               </tr>
             ))}
@@ -231,80 +246,11 @@ export function MonthSummaryDetail({
         </table>
       </section>
 
-      <div className="mb-4">
-        <WhoPaysWhomSection
+      {hasCategorySpending && (
+        <PersonCategorySpendingSection
           monthKey={monthKey}
-          settlements={summary.settlements}
+          breakdown={summary.personCategoryBreakdown ?? []}
         />
-      </div>
-
-      <section className={`${CARD} mb-4 px-4 py-3`}>
-        <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-green-800">
-          What this means
-        </h3>
-        <ul className="space-y-2">
-          {summary.summaries.map((s) => (
-            <li
-              key={s.person}
-              className="rounded-xl bg-green-50/80 px-3 py-2.5 text-sm leading-relaxed text-gray-700"
-            >
-              {describeBalance(s)}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          label="Total spent"
-          value={formatCurrency(summary.totalSpent)}
-          hint={`${summary.itemCount} item${
-            summary.itemCount !== 1 ? "s" : ""
-          }`}
-        />
-        <StatCard
-          label="Avg share"
-          value={formatCurrency(avgShare)}
-          hint="Per person"
-        />
-        <StatCard
-          label="Settlements"
-          value={String(summary.settlements.length)}
-          hint={
-            summary.settlements.length === 0
-              ? "Everyone settled"
-              : "Payment(s) needed"
-          }
-        />
-        <StatCard
-          label="Categories"
-          value={String(summary.categoryBreakdown.length)}
-          hint="Types of groceries"
-        />
-      </div>
-
-      {summary.categoryBreakdown.length > 0 && (
-        <section className={`${CARD} px-4 py-3`}>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-green-800">
-            Spending by category
-          </h3>
-          <ul className="flex flex-wrap gap-2">
-            {summary.categoryBreakdown.map(({ category, total }) => (
-              <li
-                key={category}
-                className="rounded-full px-3 py-1.5 text-sm"
-                style={{
-                  backgroundColor: getCategoryColor(category),
-                }}
-              >
-                <span className="font-medium">{category}</span>
-                <span className="ml-2 text-[#2d6a4f]">
-                  {formatCurrency(total)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
     </div>
   );

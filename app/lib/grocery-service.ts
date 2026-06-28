@@ -1,5 +1,6 @@
 import { computeMonthSummaries } from "./grouping";
 import type { MonthSummary } from "./grouping";
+import { computeMonthSummaryDetail, type MonthSummaryDetail } from "./summary";
 import {
   createEmptyItem,
   isValidItem,
@@ -18,19 +19,7 @@ import { ObjectId } from "mongodb";
 import type { GroceryItem } from "./types";
 import { collectCategories } from "./categories";
 
-export interface MonthSummaryDetail extends MonthSummary {
-  categoryBreakdown: { category: string; total: number }[];
-}
-
-function categoryBreakdown(items: GroceryItem[]) {
-  const totals = new Map<string, number>();
-  for (const item of items) {
-    totals.set(item.category, (totals.get(item.category) ?? 0) + item.price);
-  }
-  return [...totals.entries()]
-    .map(([category, total]) => ({ category, total }))
-    .sort((a, b) => b.total - a.total);
-}
+export type { MonthSummaryDetail, PersonCategorySpending } from "./summary";
 
 export async function listItems(monthKey?: string): Promise<GroceryItem[]> {
   const collection = await getGroceryCollection();
@@ -160,13 +149,5 @@ export async function getMonthSummary(
   monthKey: string
 ): Promise<MonthSummaryDetail | null> {
   const monthItems = await listItems(monthKey);
-  if (monthItems.length === 0) return null;
-
-  const summary = computeMonthSummaries(monthItems)[0];
-  if (!summary) return null;
-
-  return {
-    ...summary,
-    categoryBreakdown: categoryBreakdown(monthItems),
-  };
+  return computeMonthSummaryDetail(monthItems, monthKey);
 }

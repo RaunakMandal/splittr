@@ -1,12 +1,11 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isLoggedIn } from "../lib/site-auth-client";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -14,7 +13,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     if (pathname === "/login") {
       if (loggedIn) {
-        router.replace("/");
+        window.location.assign("/");
         return;
       }
 
@@ -27,12 +26,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         pathname === "/"
           ? "/login"
           : `/login?from=${encodeURIComponent(pathname)}`;
-      router.replace(loginUrl);
+      window.location.assign(loginUrl);
       return;
     }
 
     setReady(true);
-  }, [pathname, router]);
+  }, [pathname]);
 
   if (!ready) {
     return null;

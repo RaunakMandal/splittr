@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AppShell, FullPageSection, SectionLabel } from "./AppShell";
 import { CategorySelect } from "./CategorySelect";
@@ -27,6 +26,7 @@ import {
   BTN_PRIMARY,
   CARD,
   INPUT,
+  ROW_STRIPE,
   TABLE,
   TABLE_TD,
   TABLE_TH_STICKY,
@@ -37,7 +37,6 @@ type Step = "upload" | "review";
 type ReviewItem = NewGroceryItem & { clientKey: string };
 
 export function ReceiptUpload() {
-  const router = useRouter();
   const { categories, addItems } = useGrocery();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,19 +166,21 @@ export function ReceiptUpload() {
     setError(null);
     try {
       await addItems(items.map(({ clientKey: _clientKey, ...item }) => item));
-      router.push("/");
+      window.location.assign("/");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to save items"));
     } finally {
       setSaving(false);
     }
-  }, [addItems, items, router]);
+  }, [addItems, items]);
 
   return (
     <AppShell>
-      <FullPageSection>
+      <section className="shrink-0">
         <SectionLabel>Receipt upload</SectionLabel>
+      </section>
 
+      <FullPageSection>
         {error && (
           <ErrorAlert
             message={error}
@@ -190,7 +191,7 @@ export function ReceiptUpload() {
 
         {step === "upload" && (
           <div className={`${CARD} p-5`}>
-            <p className="mb-4 text-sm text-green-800">
+            <p className="mb-4 text-sm text-foreground">
               Upload a grocery receipt ({receiptFileLabel()}). The app extracts
               line items with OpenRouter, then lets you set the split per item
               before saving.
@@ -211,10 +212,10 @@ export function ReceiptUpload() {
               }}
               className={`mb-4 flex min-h-44 flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
                 parsing
-                  ? "cursor-not-allowed border-green-200 bg-green-50/20 opacity-60"
+                  ? "cursor-not-allowed border-border bg-muted-bg/50 opacity-60"
                   : dragOver
-                  ? "cursor-pointer border-[#2d6a4f] bg-green-50"
-                  : "cursor-pointer border-green-200 bg-green-50/40"
+                  ? "cursor-pointer border-primary bg-primary-muted"
+                  : "cursor-pointer border-border bg-primary-muted/40"
               }`}
               onClick={() => {
                 if (!parsing) fileInputRef.current?.click();
@@ -230,14 +231,14 @@ export function ReceiptUpload() {
                   handleFile(event.target.files?.[0] ?? null)
                 }
               />
-              <p className="text-sm font-medium text-green-900">
+              <p className="text-sm font-medium text-foreground">
                 {parsing
                   ? "Parsing receipt…"
                   : file
                   ? file.name
                   : `Drop a receipt here or click to browse`}
               </p>
-              <p className="mt-1 text-xs text-green-700">
+              <p className="mt-1 text-xs text-muted">
                 {receiptFileLabel()}, up to{" "}
                 {Math.round(RECEIPT_MAX_PDF_BYTES / (1024 * 1024))} MB
               </p>
@@ -245,7 +246,7 @@ export function ReceiptUpload() {
 
             <div className="mb-4">
               <label className="block text-sm">
-                <span className="mb-1 block font-medium text-green-900">
+                <span className="mb-1 block font-medium text-foreground">
                   Paid by
                 </span>
                 <select
@@ -279,14 +280,14 @@ export function ReceiptUpload() {
             <div className={`${CARD} shrink-0 p-4`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-green-900">
+                  <p className="text-sm font-medium text-foreground">
                     {parseResult.storeName ?? "Parsed receipt"}
                   </p>
-                  <p className="text-xs text-green-700">
+                  <p className="text-xs text-muted">
                     {items.length} items · {formatCurrency(total)}
                   </p>
-                  <label className="mt-2 flex items-center gap-2 text-sm">
-                    <span className="font-medium text-green-900">Date</span>
+                  <label className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-medium text-foreground">Date</span>
                     <input
                       type="date"
                       value={toPurchaseDateInput(items[0]?.purchaseDate ?? "")}
@@ -302,7 +303,7 @@ export function ReceiptUpload() {
                     )}
                   </label>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={reset} className={BTN_PRIMARY}>
                     Upload another
                   </button>
@@ -318,125 +319,130 @@ export function ReceiptUpload() {
               </div>
             </div>
 
-            <div className={`${CARD} min-h-0 flex-1 overflow-auto`}>
-              <table className={TABLE}>
-                <thead>
-                  <tr>
-                    <th className={TABLE_TH_STICKY}>Date</th>
-                    <th className={TABLE_TH_STICKY}>Item</th>
-                    <th className={TABLE_TH_STICKY}>Category</th>
-                    <th className={TABLE_TH_STICKY}>Price</th>
-                    <th className={TABLE_TH_STICKY}>Paid by</th>
-                    {PEOPLE.map((person) => (
-                      <th
-                        key={person}
-                        className={`${TABLE_TH_STICKY} text-center`}
-                      >
-                        {person}
-                      </th>
-                    ))}
-                    <th className={TABLE_TH_STICKY} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, index) => (
-                    <tr
-                      key={item.clientKey}
-                      className={
-                        index % 2 === 0 ? "bg-white" : "bg-green-50/40"
-                      }
-                    >
-                      <td className={TABLE_TD}>
-                        <input
-                          type="date"
-                          value={toPurchaseDateInput(item.purchaseDate)}
-                          onChange={(event) =>
-                            updateItem(item.clientKey, {
-                              purchaseDate: toPurchaseDateIso(
-                                event.target.value
-                              ),
-                            })
-                          }
-                          className={`${INPUT} w-[7.5rem]`}
-                        />
-                      </td>
-                      <td className={TABLE_TD}>
-                        <input
-                          type="text"
-                          value={item.item}
-                          onChange={(event) =>
-                            updateItem(item.clientKey, {
-                              item: event.target.value,
-                            })
-                          }
-                          className={`${INPUT} min-w-[10rem]`}
-                        />
-                      </td>
-                      <td className={TABLE_TD}>
-                        <CategorySelect
-                          value={item.category}
-                          categories={categories}
-                          onChange={(category) =>
-                            updateItem(item.clientKey, { category })
-                          }
-                        />
-                      </td>
-                      <td className={TABLE_TD}>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.price || ""}
-                          onChange={(event) =>
-                            updateItem(item.clientKey, {
-                              price: Number(event.target.value) || 0,
-                            })
-                          }
-                          className={`${INPUT} w-24`}
-                        />
-                      </td>
-                      <td className={TABLE_TD}>
-                        <select
-                          value={item.paidBy}
-                          onChange={(event) =>
-                            updateItem(item.clientKey, {
-                              paidBy: event.target.value as Person,
-                            })
-                          }
-                          className={`${INPUT} min-w-[7rem]`}
-                        >
-                          {PEOPLE.map((person) => (
-                            <option key={person} value={person}>
-                              {person}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
+            <div
+              className={`${CARD} flex min-h-0 flex-1 flex-col overflow-hidden`}
+            >
+              <div className="min-h-0 flex-1 overflow-auto">
+                <table className={TABLE}>
+                  <thead>
+                    <tr>
+                      <th className={TABLE_TH_STICKY}>Date</th>
+                      <th className={TABLE_TH_STICKY}>Item</th>
+                      <th className={TABLE_TH_STICKY}>Category</th>
+                      <th className={TABLE_TH_STICKY}>Price</th>
+                      <th className={TABLE_TH_STICKY}>Paid by</th>
                       {PEOPLE.map((person) => (
-                        <td key={person} className={`${TABLE_TD} text-center`}>
+                        <th
+                          key={person}
+                          className={`${TABLE_TH_STICKY} text-center`}
+                        >
+                          {person}
+                        </th>
+                      ))}
+                      <th className={TABLE_TH_STICKY} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, index) => (
+                      <tr
+                        key={item.clientKey}
+                        className={index % 2 === 0 ? "bg-surface" : ROW_STRIPE}
+                      >
+                        <td className={TABLE_TD}>
                           <input
-                            type="checkbox"
-                            checked={item.participants[person]}
-                            onChange={() =>
-                              toggleItemParticipant(item.clientKey, person)
+                            type="date"
+                            value={toPurchaseDateInput(item.purchaseDate)}
+                            onChange={(event) =>
+                              updateItem(item.clientKey, {
+                                purchaseDate: toPurchaseDateIso(
+                                  event.target.value
+                                ),
+                              })
                             }
-                            className="h-4 w-4 cursor-pointer accent-[#2d6a4f]"
+                            className={`${INPUT} w-[7.5rem]`}
                           />
                         </td>
-                      ))}
-                      <td className={TABLE_TD}>
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.clientKey)}
-                          className="cursor-pointer text-xs font-medium text-red-700 hover:underline"
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <td className={TABLE_TD}>
+                          <input
+                            type="text"
+                            value={item.item}
+                            onChange={(event) =>
+                              updateItem(item.clientKey, {
+                                item: event.target.value,
+                              })
+                            }
+                            className={`${INPUT} min-w-[10rem]`}
+                          />
+                        </td>
+                        <td className={TABLE_TD}>
+                          <CategorySelect
+                            value={item.category}
+                            categories={categories}
+                            onChange={(category) =>
+                              updateItem(item.clientKey, { category })
+                            }
+                          />
+                        </td>
+                        <td className={TABLE_TD}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.price || ""}
+                            onChange={(event) =>
+                              updateItem(item.clientKey, {
+                                price: Number(event.target.value) || 0,
+                              })
+                            }
+                            className={`${INPUT} w-24`}
+                          />
+                        </td>
+                        <td className={TABLE_TD}>
+                          <select
+                            value={item.paidBy}
+                            onChange={(event) =>
+                              updateItem(item.clientKey, {
+                                paidBy: event.target.value as Person,
+                              })
+                            }
+                            className={`${INPUT} min-w-[7rem]`}
+                          >
+                            {PEOPLE.map((person) => (
+                              <option key={person} value={person}>
+                                {person}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        {PEOPLE.map((person) => (
+                          <td
+                            key={person}
+                            className={`${TABLE_TD} text-center`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.participants[person]}
+                              onChange={() =>
+                                toggleItemParticipant(item.clientKey, person)
+                              }
+                              className="h-4 w-4 cursor-pointer accent-primary"
+                            />
+                          </td>
+                        ))}
+                        <td className={TABLE_TD}>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.clientKey)}
+                            className="cursor-pointer text-xs font-medium text-danger hover:underline"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

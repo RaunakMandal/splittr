@@ -1,13 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8faf8;
-  --foreground: #1b4332;
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --border-muted: #f1f5f9;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-muted: #eff6ff;
+  --primary-subtle: #dbeafe;
+  --muted: #64748b;
+  --muted-bg: #f8fafc;
+  --success: #059669;
+  --success-muted: #ecfdf5;
+  --danger: #e11d48;
+  --danger-muted: #fff1f2;
+  --table-header: #1e3a8a;
+  --accent: #3b82f6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-muted: var(--primary-muted);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-muted: var(--muted);
+  --color-muted-bg: var(--muted-bg);
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-danger: var(--danger);
+  --color-danger-muted: var(--danger-muted);
+  --color-table-header: var(--table-header);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

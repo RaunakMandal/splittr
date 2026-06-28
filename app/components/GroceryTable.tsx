@@ -25,8 +25,10 @@ import {
 import {
   BTN_PRIMARY,
   CARD,
+  EMPTY_STATE,
   INPUT,
   PILL,
+  ROW_STRIPE,
   TABLE,
   TABLE_TD,
   TABLE_TH_STICKY,
@@ -74,7 +76,7 @@ function GroceryRow({
   const splitWays = getSplitWays(
     isEditing && draft ? draft.participants : item.participants
   );
-  const rowClass = rowIndex % 2 === 0 ? "bg-white" : "bg-green-50/40";
+  const rowClass = rowIndex % 2 === 0 ? "bg-surface" : ROW_STRIPE;
 
   if (isEditing && draft) {
     return (
@@ -123,11 +125,11 @@ function GroceryRow({
               type="checkbox"
               checked={draft.participants[person]}
               onChange={() => onToggleParticipant(person)}
-              className="h-4 w-4 cursor-pointer accent-[#2d6a4f]"
+              className="h-4 w-4 cursor-pointer accent-primary"
             />
           </td>
         ))}
-        <td className={`${TABLE_TD} text-center font-medium text-green-800`}>
+        <td className={`${TABLE_TD} text-center font-medium text-primary`}>
           {splitWays}
         </td>
         {PEOPLE.map((person) => {
@@ -161,21 +163,21 @@ function GroceryRow({
             <IconButton
               onClick={onSave}
               title="Save"
-              className="text-green-700 hover:bg-green-100"
+              className="text-primary hover:bg-primary-muted"
             >
               <SaveIcon />
             </IconButton>
             <IconButton
               onClick={onCancel}
               title="Cancel"
-              className="text-gray-500 hover:bg-gray-100"
+              className="text-muted hover:bg-muted-bg"
             >
               <CancelIcon />
             </IconButton>
             <IconButton
               onClick={onDelete}
               title="Delete"
-              className="text-red-500 hover:bg-red-50"
+              className="text-danger hover:bg-danger-muted"
             >
               <DeleteIcon />
             </IconButton>
@@ -207,7 +209,7 @@ function GroceryRow({
           {item.participants[person] ? "✓" : "—"}
         </ReadOnlyCell>
       ))}
-      <ReadOnlyCell className="text-center font-medium text-green-800">
+      <ReadOnlyCell className="text-center font-medium text-primary">
         {splitWays}
       </ReadOnlyCell>
       {PEOPLE.map((person) => {
@@ -228,7 +230,7 @@ function GroceryRow({
             onClick={onStartEdit}
             title="Edit"
             disabled={editLocked}
-            className="text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="text-primary hover:bg-primary-muted disabled:cursor-not-allowed disabled:opacity-40"
           >
             <EditIcon />
           </IconButton>
@@ -283,6 +285,9 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
   const [draft, setDraft] = useState<GroceryItem | null>(null);
   const [isNewRow, setIsNewRow] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filterItem, setFilterItem] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterPaidBy, setFilterPaidBy] = useState<Person | "">("");
 
   const monthItems = useMemo(() => {
     const filtered = monthKey
@@ -297,11 +302,24 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
     return sorted;
   }, [items, monthKey, isNewRow, draft]);
 
+  const filteredItems = useMemo(() => {
+    const needle = filterItem.trim().toLowerCase();
+    return monthItems.filter((item) => {
+      if (needle && !item.item.toLowerCase().includes(needle)) return false;
+      if (filterCategory && item.category !== filterCategory) return false;
+      if (filterPaidBy && item.paidBy !== filterPaidBy) return false;
+      return true;
+    });
+  }, [monthItems, filterItem, filterCategory, filterPaidBy]);
+
   useEffect(() => {
     setEditingId(null);
     setDraft(null);
     setIsNewRow(false);
     setError(null);
+    setFilterItem("");
+    setFilterCategory("");
+    setFilterPaidBy("");
   }, [monthKey]);
 
   function startEdit(item: GroceryItem) {
@@ -389,7 +407,7 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
   if (!monthKey) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <p className="rounded-2xl border border-dashed border-green-200 bg-white/60 px-4 py-8 text-center text-base text-gray-500">
+        <p className={EMPTY_STATE}>
           Select a month above to view and edit entries.
         </p>
       </div>
@@ -398,15 +416,43 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-2 flex shrink-0 items-center justify-between gap-2 px-1">
-        <h2 className="text-base font-semibold text-green-800">
-          {formatMonthLabel(monthKey)}
-          <span className="ml-2 text-sm font-normal text-gray-500">
-            ({monthItems.length} item{monthItems.length !== 1 ? "s" : ""})
+      <div className="mb-2 flex shrink-0 flex-wrap items-center gap-2 px-1">
+        <input
+          type="search"
+          placeholder="Filter item…"
+          value={filterItem}
+          onChange={(e) => setFilterItem(e.target.value)}
+          className={`${inputClass} min-w-[7rem] flex-1 sm:max-w-[10rem]`}
+        />
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className={`${inputClass} min-w-[7rem]`}
+        >
+          <option value="">All categories</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterPaidBy}
+          onChange={(e) => setFilterPaidBy(e.target.value as Person | "")}
+          className={`${inputClass} min-w-[7rem]`}
+        >
+          <option value="">All paid by</option>
+          {PEOPLE.map((person) => (
+            <option key={person} value={person}>
+              {person}
+            </option>
+          ))}
+        </select>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden text-sm text-muted sm:inline">
+            {filteredItems.length}/{monthItems.length}
           </span>
-        </h2>
-        <div className="flex items-center gap-2">
-          <span className="rounded-full bg-green-50 px-3 py-1 text-sm text-gray-500">
+          <span className="rounded-full bg-primary-muted px-2.5 py-1 text-xs text-muted">
             {saving ? "Saving…" : "Saved"}
           </span>
           <button
@@ -415,7 +461,7 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
             disabled={editingId !== null}
             className={BTN_PRIMARY}
           >
-            + Add Row
+            + Add
           </button>
         </div>
       </div>
@@ -431,18 +477,19 @@ export function GroceryTable({ monthKey }: { monthKey: string | null }) {
           <table className={TABLE}>
             <TableHeader />
             <tbody>
-              {monthItems.length === 0 ? (
+              {filteredItems.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5 + PEOPLE.length * 2 + 2}
-                    className="px-4 py-8 text-center text-base text-gray-500"
+                    className="px-4 py-8 text-center text-base text-muted"
                   >
-                    No items for this month. Click &quot;+ Add Row&quot; to add
-                    one.
+                    {monthItems.length === 0
+                      ? 'No items for this month. Click "+ Add" to add one.'
+                      : "No items match the current filters."}
                   </td>
                 </tr>
               ) : (
-                monthItems.map((item, index) => (
+                filteredItems.map((item, index) => (
                   <GroceryRow
                     key={item.id}
                     item={item}

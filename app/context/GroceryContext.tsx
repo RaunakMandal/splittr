@@ -148,7 +148,7 @@ export function GroceryProvider({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-base text-green-800">
+      <div className="flex min-h-screen items-center justify-center text-base text-primary">
         Loading…
       </div>
     );

@@ -1,9 +1,11 @@
 import type { MonthSummary } from "./grouping";
-import type { MonthSummaryDetail } from "./grocery-service";
+import type { MonthSummaryDetail } from "./summary";
 import type { GroceryItem, NewGroceryItem, ReceiptParseResult } from "./types";
 
 import { getErrorMessage } from "./errors";
 import { clearAuthToken, getAuthToken } from "./site-auth-client";
+
+type ApiFetchInit = RequestInit & { skipAuthRedirect?: boolean };
 
 function authHeaders(init?: RequestInit): Headers {
   const headers = new Headers(init?.headers);
@@ -13,19 +15,31 @@ function authHeaders(init?: RequestInit): Headers {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
+  if (!headers.has("Accept")) {
+    headers.set("Accept", "application/json");
+  }
+
   return headers;
 }
 
-async function authFetch(
+async function apiFetch(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: ApiFetchInit
 ): Promise<Response> {
+  const { skipAuthRedirect, ...fetchInit } = init ?? {};
+
   const response = await fetch(input, {
-    ...init,
-    headers: authHeaders(init),
+    cache: "no-store",
+    credentials: "same-origin",
+    ...fetchInit,
+    headers: authHeaders(fetchInit),
   });
 
-  if (response.status === 401 && typeof window !== "undefined") {
+  if (
+    response.status === 401 &&
+    !skipAuthRedirect &&
+    typeof window !== "undefined"
+  ) {
     clearAuthToken();
     window.location.assign("/login");
   }
@@ -63,24 +77,41 @@ async function parseJson<T>(res: Response): Promise<T> {
   return data;
 }
 
+export async function login(password: string): Promise<string> {
+  const data = await parseJson<{ token?: string }>(
+    await apiFetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+      skipAuthRedirect: true,
+    })
+  );
+
+  if (!data.token) {
+    throw new Error("Authentication failed");
+  }
+
+  return data.token;
+}
+
 export async function fetchItems(month?: string): Promise<GroceryItem[]> {
   const query = month ? `?month=${encodeURIComponent(month)}` : "";
   const data = await parseJson<{ items: GroceryItem[] }>(
-    await authFetch(`/api/grocery${query}`)
+    await apiFetch(`/api/grocery${query}`)
   );
   return data.items;
 }
 
 export async function fetchItem(id: string): Promise<GroceryItem> {
   const data = await parseJson<{ item: GroceryItem }>(
-    await authFetch(`/api/grocery/${id}`)
+    await apiFetch(`/api/grocery/${id}`)
   );
   return data.item;
 }
 
 export async function createItem(item: NewGroceryItem): Promise<GroceryItem> {
   const data = await parseJson<{ item: GroceryItem }>(
-    await authFetch("/api/grocery", {
+    await apiFetch("/api/grocery", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ item }),
@@ -94,7 +125,7 @@ export async function updateItemApi(
   updates: Partial<GroceryItem>
 ): Promise<GroceryItem> {
   const data = await parseJson<{ item: GroceryItem }>(
-    await authFetch(`/api/grocery/${id}`, {
+    await apiFetch(`/api/grocery/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ item: updates }),
@@ -105,21 +136,21 @@ export async function updateItemApi(
 
 export async function deleteItemApi(id: string): Promise<GroceryItem> {
   const data = await parseJson<{ item: GroceryItem }>(
-    await authFetch(`/api/grocery/${id}`, { method: "DELETE" })
+    await apiFetch(`/api/grocery/${id}`, { method: "DELETE" })
   );
   return data.item;
 }
 
 export async function fetchCategories(): Promise<string[]> {
   const data = await parseJson<{ categories: string[] }>(
-    await authFetch("/api/categories")
+    await apiFetch("/api/categories")
   );
   return data.categories;
 }
 
 export async function fetchSummaries(): Promise<MonthSummary[]> {
   const data = await parseJson<{ summaries: MonthSummary[] }>(
-    await authFetch("/api/summary")
+    await apiFetch("/api/summary")
   );
   return data.summaries;
 }
@@ -128,7 +159,7 @@ export async function fetchMonthSummary(
   monthKey: string
 ): Promise<MonthSummaryDetail> {
   const data = await parseJson<{ summary: MonthSummaryDetail }>(
-    await authFetch(`/api/summary/${monthKey}`)
+    await apiFetch(`/api/summary/${monthKey}`)
   );
   return data.summary;
 }
@@ -140,7 +171,7 @@ export async function parseReceiptFile(
   formData.append("file", file);
 
   const data = await parseJson<{ result: ReceiptParseResult }>(
-    await authFetch("/api/receipt/parse", {
+    await apiFetch("/api/receipt/parse", {
       method: "POST",
       body: formData,
     })
@@ -157,7 +188,7 @@ export async function importReceiptItems(
   items: NewGroceryItem[]
 ): Promise<GroceryItem[]> {
   const data = await parseJson<{ items: GroceryItem[] }>(
-    await authFetch("/api/receipt/import", {
+    await apiFetch("/api/receipt/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),

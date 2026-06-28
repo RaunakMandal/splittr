@@ -35,9 +35,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full min-h-dvh antialiased`}
     >
-      <body className="h-full overflow-hidden font-sans">
+      <body className="h-full min-h-dvh overflow-hidden font-sans">
         <Providers>{children}</Providers>
       </body>
     </html>

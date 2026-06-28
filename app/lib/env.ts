@@ -5,6 +5,10 @@ function readEnv(name: string): string | undefined {
   return value || undefined;
 }
 
+function envOrRequired(name: string): string {
+  return readEnv(name) ?? requiredEnv(name);
+}
+
 function requiredEnv(name: string): string {
   const value = readEnv(name);
   if (!value) {
@@ -61,13 +65,13 @@ export function getOpenRouterConfig() {
 }
 
 export function getMongoUri(): string {
-  return requiredEnv("MONGODB_URI");
+  return envOrRequired("MONGODB_URI");
 }
 
 export function getMongoCollectionName(): string {
-  return requiredEnv("MONGODB_COLLECTION");
+  return envOrRequired("MONGODB_COLLECTION");
 }
 
 export function getMongoDbName(): string {
-  return requiredEnv("MONGODB_DB_NAME");
+  return envOrRequired("MONGODB_DB_NAME");
 }

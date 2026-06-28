@@ -14,7 +14,7 @@ export function ErrorAlert({
   return (
     <div
       role="alert"
-      className={`flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800 ${className}`}
+      className={`flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-muted px-3 py-2.5 text-sm text-danger ${className}`}
     >
       <p className="min-w-0 flex-1 leading-relaxed">{message}</p>
       <div className="flex shrink-0 items-center gap-2">
@@ -22,7 +22,7 @@ export function ErrorAlert({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 cursor-pointer"
+            className="cursor-pointer rounded-full border border-danger/20 bg-surface px-3 py-1 text-xs font-medium text-danger transition-colors hover:bg-danger-muted"
           >
             Retry
           </button>
@@ -31,7 +31,7 @@ export function ErrorAlert({
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss error"
-          className="cursor-pointer rounded-full p-1 text-red-600 transition-colors hover:bg-red-100 hover:text-red-800"
+          className="cursor-pointer rounded-full p-1 text-danger transition-colors hover:bg-danger-muted"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

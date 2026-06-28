@@ -15,27 +15,27 @@ export const DEFAULT_PAID_BY = "Raunak";
 export const DEFAULT_CATEGORY = CATEGORIES[0];
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  "Essentials/spreads": "#f5d0a9",
-  Snacks: "#f0c9a0",
-  "Sweet/Icecream": "#d4b8e0",
-  Eggs: "#f5e6a3",
-  Dairy: "#a8d4e6",
-  Vegetables: "#b8e0b0",
-  Meat: "#e8a8a8",
-  Rice: "#d0d0d0",
+  "Essentials/spreads": "#ddd6fe",
+  Snacks: "#fde68a",
+  "Sweet/Icecream": "#fbcfe8",
+  Eggs: "#fef9c3",
+  Dairy: "#bae6fd",
+  Vegetables: "#bbf7d0",
+  Meat: "#fecaca",
+  Rice: "#e7e5e4",
 };
 
 export const CATEGORY_FALLBACK_PALETTE = [
-  "#f5d0a9",
-  "#f0c9a0",
-  "#d4b8e0",
-  "#f5e6a3",
-  "#a8d4e6",
-  "#b8e0b0",
-  "#e8a8a8",
-  "#d0d0d0",
-  "#c9e4ca",
-  "#ffe0b2",
+  "#ddd6fe",
+  "#fde68a",
+  "#fbcfe8",
+  "#fef9c3",
+  "#bae6fd",
+  "#bbf7d0",
+  "#fecaca",
+  "#e7e5e4",
+  "#c7d2fe",
+  "#fed7aa",
 ];
 
 export const RECEIPT_MAX_PDF_BYTES = 10 * 1024 * 1024;

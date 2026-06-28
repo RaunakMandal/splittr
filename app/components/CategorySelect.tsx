@@ -51,7 +51,7 @@ export function CategorySelect({
           <button
             type="button"
             onClick={() => setMode("select")}
-            className="mt-1 cursor-pointer text-xs font-medium text-green-700 hover:underline"
+            className="mt-1 cursor-pointer text-xs font-medium text-primary hover:underline"
           >
             Pick existing
           </button>
@@ -87,7 +87,7 @@ export function CategorySelect({
           {cat}
         </option>
       ))}
-      <option value={NEW_CATEGORY} className="bg-white font-medium">
+      <option value={NEW_CATEGORY} className="bg-surface font-medium">
         + Add category…
       </option>
     </select>

@@ -16,10 +16,10 @@ export function MonthPicker({
   if (months.length === 0) return null;
 
   return (
-    <div className="mb-2 flex items-center gap-2 px-1">
+    <div className="mb-1 flex items-center gap-2 px-1">
       <label
         htmlFor="month-picker"
-        className="text-sm font-medium text-green-800"
+        className="text-sm font-medium text-foreground"
       >
         Month
       </label>
