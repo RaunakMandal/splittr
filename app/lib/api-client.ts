@@ -34,12 +34,32 @@ async function authFetch(
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
-  const data = (await res.json()) as T & { error?: string };
+  const raw = await res.text();
+  const contentType = res.headers.get("content-type") ?? "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      res.ok
+        ? "Server returned an unexpected response"
+        : `Request failed (${res.status}). Check server logs or env configuration.`
+    );
+  }
+
+  let data: T & { error?: string };
+  try {
+    data = JSON.parse(raw) as T & { error?: string };
+  } catch {
+    throw new Error(
+      `Request failed (${res.status}) with invalid JSON response`
+    );
+  }
+
   if (!res.ok) {
     throw new Error(
       getErrorMessage(data.error, `Request failed (${res.status})`)
     );
   }
+
   return data;
 }
 

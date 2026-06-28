@@ -19,7 +19,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/api/")) {
-    if (!(await isAuthorizedRequest(request))) {
+    try {
+      if (!(await isAuthorizedRequest(request))) {
+        return withNoIndexHeaders(
+          NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        );
+      }
+    } catch {
       return withNoIndexHeaders(
         NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       );
@@ -32,5 +38,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    // Skip receipt parse: large multipart bodies are validated in the route.
+    "/((?!_next/static|_next/image|favicon.ico|api/receipt/parse).*)",
+  ],
 };

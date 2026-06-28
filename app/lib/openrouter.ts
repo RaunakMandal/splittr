@@ -47,7 +47,18 @@ async function callOpenRouter(messages: OpenRouterMessage[]): Promise<unknown> {
     }),
   });
 
-  const data = (await response.json()) as OpenRouterResponse;
+  const raw = await response.text();
+  let data: OpenRouterResponse;
+  try {
+    data = JSON.parse(raw) as OpenRouterResponse;
+  } catch {
+    throw new Error(
+      response.ok
+        ? "OpenRouter returned a non-JSON response"
+        : `OpenRouter request failed (${response.status})`
+    );
+  }
+
   if (!response.ok) {
     throw new Error(data.error?.message ?? "OpenRouter request failed");
   }

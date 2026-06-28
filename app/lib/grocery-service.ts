@@ -84,11 +84,23 @@ export async function createItems(
 ): Promise<GroceryItem[]> {
   if (inputs.length === 0) throw new Error("No items to create");
 
-  const created: GroceryItem[] = [];
-  for (const input of inputs) {
-    created.push(await createItem(input));
-  }
-  return created;
+  const drafts = inputs.map((input, index) => {
+    const draft = validateItemFields({ ...createEmptyItem(), ...input });
+    if (!draft) throw new Error(`Invalid item data at index ${index}`);
+    if (!isValidItem(draft)) {
+      throw new Error(`Item name and price are required at index ${index}`);
+    }
+    return draft;
+  });
+
+  const collection = await getGroceryCollection();
+  const result = await collection.insertMany(drafts);
+
+  return drafts.map((draft, index) => {
+    const item = toGroceryItem({ _id: result.insertedIds[index], ...draft });
+    if (!item) throw new Error(`Failed to create item at index ${index}`);
+    return item;
+  });
 }
 
 export async function updateItem(
@@ -100,13 +112,10 @@ export async function updateItem(
 
   const merged = validateItemFields({ ...existing, ...updates });
   if (!merged) throw new Error("Invalid item data");
-  if (!isValidItem(merged))
-    throw new Error("Item name and price are required");
+  if (!isValidItem(merged)) throw new Error("Item name and price are required");
 
   const collection = await getGroceryCollection();
-  const filter = ObjectId.isValid(id)
-    ? { _id: toObjectId(id) }
-    : { id };
+  const filter = ObjectId.isValid(id) ? { _id: toObjectId(id) } : { id };
   const result = await collection.findOneAndReplace(filter, merged, {
     returnDocument: "after",
   });

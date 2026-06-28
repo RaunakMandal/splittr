@@ -1,4 +1,4 @@
-import { jsonError, jsonOk } from "../../../lib/api-utils";
+import { jsonError, jsonOk, requireAuth } from "../../../lib/api-utils";
 import { getErrorMessage } from "../../../lib/errors";
 import { parseReceiptFile } from "../../../lib/receipt-parser";
 import { isAllowedReceiptFile } from "../../../lib/receipt-upload";
@@ -7,6 +7,11 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  const unauthorized = await requireAuth(request);
+  if (unauthorized) {
+    return unauthorized;
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");
@@ -25,10 +30,13 @@ export async function POST(request: Request) {
     return jsonOk({ result, success: true });
   } catch (error) {
     const message = getErrorMessage(error, "Failed to parse receipt");
-    const status =
-      message.includes("OPENROUTER") || message.includes("not configured")
-        ? 503
-        : 400;
+    const status = message.includes("not configured")
+      ? 503
+      : message.includes("OPENROUTER") ||
+        message.includes("OpenRouter") ||
+        message.includes("PDF")
+      ? 503
+      : 400;
     return jsonError(message, status);
   }
 }

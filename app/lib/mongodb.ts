@@ -23,6 +23,12 @@ export async function getGroceryCollection(): Promise<
 
       await collection.createIndex({ purchaseDate: 1 });
 
+      // Legacy unique index on `id` breaks bulk inserts when `id` is omitted.
+      const indexes = await collection.indexes();
+      if (indexes.some((index) => index.name === "id_1")) {
+        await collection.dropIndex("id_1");
+      }
+
       return collection;
     })();
   }

@@ -1,5 +1,5 @@
-import { PDFParse } from "pdf-parse";
 import { CATEGORIES, DEFAULT_CATEGORY, RECEIPT_MAX_PDF_BYTES } from "./config";
+import { getErrorMessage } from "./errors";
 import { extractReceiptFromImage, extractReceiptFromText } from "./openrouter";
 import { type ReceiptMimeType, resolveReceiptMimeType } from "./receipt-upload";
 import { createEmptyItem } from "./items";
@@ -13,12 +13,17 @@ import type {
 } from "./types";
 
 export async function extractPdfText(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer });
   try {
-    const result = await parser.getText();
-    return result.text.trim();
-  } finally {
-    await parser.destroy();
+    const { PDFParse } = await import("pdf-parse");
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      return result.text.trim();
+    } finally {
+      await parser.destroy();
+    }
+  } catch (error) {
+    throw new Error(getErrorMessage(error, "Failed to read PDF text"));
   }
 }
 
